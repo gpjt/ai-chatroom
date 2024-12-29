@@ -25,19 +25,23 @@ REQUIRED_ENV_VARS = [
 API_CONFIGS = {
     "Claude": {
         "env_key": "ANTHROPIC_API_KEY",
-        "base_url": "https://api.anthropic.com/v1/messages"
+        "base_url": "https://api.anthropic.com/v1/messages",
+        "model": "???",
     },
     "GPT": {
         "env_key": "OPENAI_API_KEY",
-        "base_url": "https://api.openai.com/v1/chat/completions"
+        "base_url": "https://api.openai.com/v1/chat/completions",
+        "model": "gpt-4o",
     },
     "Grok": {
         "env_key": "GROK_API_KEY",
-        "base_url": "https://api.x.ai/v1/chat/completions"
+        "base_url": "https://api.x.ai/v1/chat/completions",
+        "model": "???",
     },
     "DeepSeek": {
         "env_key": "DEEPSEEK_API_KEY",
-        "base_url": "https://api.deepseek.com/v1/chat/completions"
+        "base_url": "https://api.deepseek.com/v1/chat/completions",
+        "model": "???",
     }
 }
 
@@ -64,11 +68,12 @@ def validate_env_vars():
         )
 
 class AIProvider:
-    def __init__(self, name: str, api_key: str, base_url: str, system_prompt: str):
+    def __init__(self, name: str, api_key: str, base_url: str, system_prompt: str, model: str):
         self.name = name
         self.api_key = api_key
         self.base_url = base_url
         self.system_prompt = system_prompt
+        self.model = model
 
 class AIChat:
     def __init__(self):
@@ -82,7 +87,8 @@ class AIChat:
                     name,
                     api_key,
                     config["base_url"],
-                    self._create_system_prompt(f"🤖[{name}]")
+                    self._create_system_prompt(f"🤖[{name}]"),
+                    config["model"],
                 )
 
         # Store active chats and their configurations
@@ -107,7 +113,7 @@ class AIChat:
 
             payload = {
                 "messages": messages,
-                "model": "gpt-4",  # Adjust model name as needed for each provider
+                "model": provider.model,
                 "temperature": 0.7
             }
 
