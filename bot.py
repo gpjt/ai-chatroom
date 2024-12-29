@@ -105,7 +105,6 @@ def build_providers():
 class AIChat:
     def __init__(self, providers):
         self.providers = providers
-        self.active_chats: Dict[int, List[str]] = {}  # chat_id -> list of active AI names
         self.chat_history: Dict[int, List[str]] = {}  # chat_id -> history
 
 
@@ -140,9 +139,6 @@ class AIChat:
                 return f"Error making request to {provider.name}: {str(e)}"
 
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
-        if chat_id not in self.active_chats:
-            return ["This chat has no active AI participants. Use /start to begin."]
-
         # Format the user message
         formatted_message = f"👤[{user_name}]: {message_text}"
 
@@ -153,25 +149,23 @@ class AIChat:
 
         # First round: Get initial responses from all AIs in random order
         responses = []
-        ai_order = list(self.active_chats[chat_id])
+        ai_order = list(self.providers.values())
         random.shuffle(ai_order)
 
-        for ai_name in ai_order:
-            provider = self.providers[ai_name]
+        for provider in ai_order:
             response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + messages)
             if response.strip().upper() != "PASS":
-                responses.append(f"🤖[{ai_name}]: {response}")
+                responses.append(f"🤖[{provider.name}]: {response}")
 
         # Second round: Allow AIs to respond to each other
         if len(responses) > 1:  # Only do second round if there were multiple responses
             second_round_messages = messages + [{"role": "assistant", "content": r} for r in responses]
 
             random.shuffle(ai_order)  # Randomize order again for second round
-            for ai_name in ai_order:
-                provider = self.providers[ai_name]
+            for provider in ai_order:
                 response = await self._make_ai_request(provider, second_round_messages)
                 if response.strip().upper() != "PASS":
-                    responses.append(f"🤖[{ai_name}] (follow-up): {response}")
+                    responses.append(f"🤖[{provider.name}] (follow-up): {response}")
 
         return responses
 
@@ -208,18 +202,12 @@ class TelegramBot:
         # Authorize and initialize the chat
         ai_chat = AIChat(providers=self.providers)
         self.authorized_chats[chat_id] = ai_chat
-        ai_chat.active_chats[chat_id] = []
         ai_chat.chat_history[chat_id] = []
         await context.bot.send_message(
             chat_id=chat_id,
             text="Chat authorized and initialized."
         )
-        for ai_name in self.providers:
-            ai_chat.active_chats[chat_id].append(ai_name)
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"Added {ai_name} to the chat"
-            )
+
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle incoming messages"""
