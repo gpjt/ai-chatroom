@@ -174,8 +174,7 @@ class AIChat:
 class TelegramBot:
     def __init__(self, token: str):
         self.application = Application.builder().token(token).build()
-        self.ai_chat = AIChat()
-        self.authorized_chats = set()  # Store authorized chat IDs
+        self.authorized_chats = {}
         self.secret_key = os.getenv('BOT_SECRET_KEY')
 
         # Add handlers
@@ -183,7 +182,6 @@ class TelegramBot:
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Initialize a new chat session with authentication"""
         chat_id = update.effective_chat.id
 
         # Check if the chat is already authorized
@@ -203,15 +201,16 @@ class TelegramBot:
             return
 
         # Authorize and initialize the chat
-        self.authorized_chats.add(chat_id)
-        self.ai_chat.active_chats[chat_id] = []
-        self.ai_chat.chat_history[chat_id] = []  # Initialize empty history for new chat
+        ai_chat = AIChat()
+        self.authorized_chats[chat_id] = ai_chat
+        ai_chat.active_chats[chat_id] = []
+        ai_chat.chat_history[chat_id] = []
         await context.bot.send_message(
             chat_id=chat_id,
             text="Chat authorized and initialized."
         )
-        for ai_name in self.ai_chat.providers:
-            self.ai_chat.active_chats[chat_id].append(ai_name)
+        for ai_name in ai_chat.providers:
+            ai_chat.active_chats[chat_id].append(ai_name)
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=f"Added {ai_name} to the chat"
@@ -232,7 +231,7 @@ class TelegramBot:
         user_name = update.effective_user.first_name
         message_text = update.message.text
 
-        responses = await self.ai_chat.process_message(chat_id, user_name, message_text)
+        responses = await self.authorized_chats[chat_id].process_message(chat_id, user_name, message_text)
 
         for response in responses:
             await context.bot.send_message(
