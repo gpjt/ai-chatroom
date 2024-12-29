@@ -4,6 +4,9 @@ A Telegram bot where you can have multiple OpenAI-compatible AIs chiming in.
 Code originally written by Claude <https://claude.ai/> but since heavily
 modified.
 
+See [this blog post](https://www.gilesthomas.com/2024/12/ai-chatroom-1) for
+the background.
+
 Very much a WIP -- don't expect it to work well yet!
 
 To use, you *must* set the following environment variables:
