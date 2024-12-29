@@ -180,9 +180,6 @@ class TelegramBot:
 
         # Add handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
-        self.application.add_handler(CommandHandler("add_ai", self.add_ai_command))
-        self.application.add_handler(CommandHandler("remove_ai", self.remove_ai_command))
-        self.application.add_handler(CommandHandler("list_ai", self.list_ai_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -211,103 +208,13 @@ class TelegramBot:
         self.ai_chat.chat_history[chat_id] = []  # Initialize empty history for new chat
         await context.bot.send_message(
             chat_id=chat_id,
-            text="Chat authorized and initialized. Use /add_ai to add AI participants."
+            text="Chat authorized and initialized."
         )
-
-    async def add_ai_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Add an AI to the chat"""
-        chat_id = update.effective_chat.id
-
-        # Check if the chat is authorized
-        if chat_id not in self.authorized_chats:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="This chat is not authorized. Use /start with the secret key to begin."
-            )
-            return
-        if not context.args:
-            available_ais = ", ".join(self.ai_chat.providers.keys())
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"Please specify an AI to add. Available AIs: {available_ais}"
-            )
-            return
-
-        ai_name = context.args[0]
-        if ai_name not in self.ai_chat.providers:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"Unknown AI: {ai_name}"
-            )
-            return
-
-        if chat_id not in self.ai_chat.active_chats:
-            self.ai_chat.active_chats[chat_id] = []
-
-        if ai_name not in self.ai_chat.active_chats[chat_id]:
+        for ai_name in self.ai_chat.providers:
             self.ai_chat.active_chats[chat_id].append(ai_name)
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=f"Added {ai_name} to the chat"
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{ai_name} is already in the chat"
-            )
-
-    async def remove_ai_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Remove an AI from the chat"""
-        chat_id = update.effective_chat.id
-
-        # Check if the chat is authorized
-        if chat_id not in self.authorized_chats:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="This chat is not authorized. Use /start with the secret key to begin."
-            )
-            return
-        if not context.args:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="Please specify an AI to remove"
-            )
-            return
-
-        ai_name = context.args[0]
-        if chat_id in self.ai_chat.active_chats and ai_name in self.ai_chat.active_chats[chat_id]:
-            self.ai_chat.active_chats[chat_id].remove(ai_name)
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"Removed {ai_name} from the chat"
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{ai_name} is not in the chat"
-            )
-
-    async def list_ai_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """List all AIs in the chat"""
-        chat_id = update.effective_chat.id
-
-        # Check if the chat is authorized
-        if chat_id not in self.authorized_chats:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="This chat is not authorized. Use /start with the secret key to begin."
-            )
-            return
-        if chat_id in self.ai_chat.active_chats:
-            ais = ", ".join(self.ai_chat.active_chats[chat_id]) if self.ai_chat.active_chats[chat_id] else "No AIs"
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"AIs in this chat: {ais}"
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="This chat has not been initialized. Use /start first."
             )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
