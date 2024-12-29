@@ -26,6 +26,7 @@ API_CONFIGS = {
     "Claude": {
         "env_key": "ANTHROPIC_API_KEY",
         "base_url": "https://api.anthropic.com/v1/messages",
+        "api_type": "anthropic",
         "auth_header": "x-api-key",
         "auth_header_include_bearer": False,
         "extra_headers": {"anthropic-version": "2023-06-01"},
@@ -34,6 +35,7 @@ API_CONFIGS = {
     "GPT": {
         "env_key": "OPENAI_API_KEY",
         "base_url": "https://api.openai.com/v1/chat/completions",
+        "api_type": "openai",
         "auth_header": "Authorization",
         "auth_header_include_bearer": True,
         "extra_headers": {},
@@ -42,6 +44,7 @@ API_CONFIGS = {
     "Grok": {
         "env_key": "GROK_API_KEY",
         "base_url": "https://api.x.ai/v1/chat/completions",
+        "api_type": "openai",
         "auth_header": "Authorization",
         "auth_header_include_bearer": True,
         "extra_headers": {},
@@ -50,6 +53,7 @@ API_CONFIGS = {
     "DeepSeek": {
         "env_key": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com/v1/chat/completions",
+        "api_type": "openai",
         "auth_header": "Authorization",
         "auth_header_include_bearer": True,
         "extra_headers": {},
@@ -91,12 +95,7 @@ class AIProvider:
 
     async def make_request(self, messages):
         async with aiohttp.ClientSession() as session:
-            payload = {
-                "messages": [{"role": "system", "content": self.system_prompt}] + messages,
-                "model": self.model,
-                "temperature": 0.7
-            }
-
+            payload = self.get_payload(messages)
             try:
                 logging.info(
                     f"Making request to {self.base_url}\n"
@@ -113,6 +112,27 @@ class AIProvider:
                         return f"Error: {await response.text()}"
             except Exception as e:
                 return f"Error making request to {self.name}: {str(e)}"
+
+
+class OpenAIProvider(AIProvider):
+    def get_payload(self, messages):
+        return {
+            "messages": [{"role": "system", "content": self.system_prompt}] + messages,
+            "model": self.model,
+            "temperature": 0.7
+        }
+
+
+
+class AnthropicProvider(AIProvider):
+    def get_payload(self, messages):
+        return {
+            "system": self.system_prompt,
+            "messages": messages,
+            "model": self.model,
+            "temperature": 0.7
+        }
+
 
 
 def _create_system_prompt(ai_identifier):
@@ -139,7 +159,16 @@ def build_providers():
             else:
                 headers[config["auth_header"]] = api_key
             headers |= config["extra_headers"]
-            providers[name] = AIProvider(
+
+
+            if config.get("api_type") == "openai":
+                provider_class = OpenAIProvider
+            elif config.get("api_type") == "anthropic":
+                provider_class = AnthropicProvider
+            else:
+                raise Exception(f'Unknown api_type {config.get("api_type")!r} for {name}')
+
+            providers[name] = provider_class(
                 name,
                 api_key,
                 config["base_url"],
