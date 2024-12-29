@@ -136,7 +136,6 @@ class AIChat:
 
         # Prepare conversation history (you'll need to implement history tracking)
         messages = [
-            {"role": "system", "content": system_prompt},
             {"role": "user", "content": formatted_message}
         ]
 
@@ -147,7 +146,7 @@ class AIChat:
 
         for ai_name in ai_order:
             provider = self.providers[ai_name]
-            response = await self._make_ai_request(provider, messages)
+            response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + messages)
             if response.strip().upper() != "PASS":
                 responses.append(f"🤖[{ai_name}]: {response}")
 
