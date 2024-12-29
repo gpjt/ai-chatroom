@@ -57,7 +57,7 @@ API_CONFIGS = {
         "auth_header": "Authorization",
         "auth_header_include_bearer": True,
         "extra_headers": {},
-        "model": "???",
+        "model": "deepseek-chat",
     }
 }
 
