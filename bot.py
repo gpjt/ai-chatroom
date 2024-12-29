@@ -105,7 +105,7 @@ def build_providers():
 class AIChat:
     def __init__(self, providers):
         self.providers = providers
-        self.chat_history: Dict[int, List[str]] = {}  # chat_id -> history
+        self.chat_history = []
 
 
     async def _make_ai_request(self, provider: AIProvider, messages: List[Dict[str, str]]) -> str:
@@ -138,34 +138,38 @@ class AIChat:
             except Exception as e:
                 return f"Error making request to {provider.name}: {str(e)}"
 
+
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
         # Format the user message
         formatted_message = f"👤[{user_name}]: {message_text}"
 
-        # Prepare conversation history (you'll need to implement history tracking)
-        messages = [
+        self.chat_history += [
             {"role": "user", "content": formatted_message}
         ]
 
-        # First round: Get initial responses from all AIs in random order
         responses = []
         ai_order = list(self.providers.values())
         random.shuffle(ai_order)
 
+        have_response = False
         for provider in ai_order:
-            response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + messages)
+            response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + self.chat_history)
             if response.strip().upper() != "PASS":
-                responses.append(f"🤖[{provider.name}]: {response}")
+                formatted_response = f"🤖[{provider.name}]: {response}"
+                responses.append(formatted_response)
+                self.chat_history.append({"role": "assistant", "content": formatted_response})
+                have_response = True
 
-        # Second round: Allow AIs to respond to each other
-        if len(responses) > 1:  # Only do second round if there were multiple responses
-            second_round_messages = messages + [{"role": "assistant", "content": r} for r in responses]
-
+        # Second round: Allow AIs to respond to each other, if at least one of them
+        # replied
+        if have_response:
             random.shuffle(ai_order)  # Randomize order again for second round
             for provider in ai_order:
-                response = await self._make_ai_request(provider, second_round_messages)
+                response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + self.chat_history)
                 if response.strip().upper() != "PASS":
-                    responses.append(f"🤖[{provider.name}] (follow-up): {response}")
+                    formatted_response = f"🤖[{provider.name}]: {response}"
+                    responses.append(formatted_response)
+                    self.chat_history.append({"role": "assistant", "content": formatted_response})
 
         return responses
 
@@ -202,7 +206,6 @@ class TelegramBot:
         # Authorize and initialize the chat
         ai_chat = AIChat(providers=self.providers)
         self.authorized_chats[chat_id] = ai_chat
-        ai_chat.chat_history[chat_id] = []
         await context.bot.send_message(
             chat_id=chat_id,
             text="Chat authorized and initialized."
