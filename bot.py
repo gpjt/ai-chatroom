@@ -119,7 +119,7 @@ class AIChat:
 
         # Prepare conversation history (you'll need to implement history tracking)
         messages = [
-            {"role": "system", "content": "system_prompt"},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": formatted_message}
         ]
 
