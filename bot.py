@@ -38,7 +38,7 @@ def validate_env_vars():
     if missing_vars:
         raise EnvironmentError(
             f"Missing required environment variables: {', '.join(missing_vars)}\n"
-            "Please ensure all required variables are set in your .env file."
+            "Please ensure all required variables are set in your environment."
         )
 
     # Check if at least one AI provider is configured
