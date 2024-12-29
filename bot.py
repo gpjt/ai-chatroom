@@ -91,7 +91,8 @@ class AIChat:
     def _create_system_prompt(self, ai_identifier: str) -> str:
         return f"""You are in a chat session with one or more humans, and potentially other AIs.
         Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
-        and your own messages are identified by {ai_identifier}.
+        and your own messages are identified by {ai_identifier}.  This applies only to the context that you
+        are sent, you MUST NOT prefix your own responses with {ai_identifier}.
         After each message from a human, all participating AIs will be offered a chance to respond in a random order.
         Once all have responded, they will be offered a chance to respond again so that they can answer any points
         raised by the other AIs. You can choose not to respond by saying just 'PASS'.
