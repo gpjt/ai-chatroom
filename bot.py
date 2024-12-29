@@ -4,10 +4,6 @@ import aiohttp
 import random
 import os
 from typing import Dict, List
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Required environment variables
 REQUIRED_ENV_VARS = [
