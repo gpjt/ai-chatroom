@@ -26,21 +26,33 @@ API_CONFIGS = {
     "Claude": {
         "env_key": "ANTHROPIC_API_KEY",
         "base_url": "https://api.anthropic.com/v1/messages",
-        "model": "???",
+        "auth_header": "x-api-key",
+        "auth_header_include_bearer": False,
+        "extra_headers": {"anthropic-version": "2023-06-01"},
+        "model": "claude-3-5-sonnet-latest",
     },
     "GPT": {
         "env_key": "OPENAI_API_KEY",
         "base_url": "https://api.openai.com/v1/chat/completions",
+        "auth_header": "Authorization",
+        "auth_header_include_bearer": True,
+        "extra_headers": {},
         "model": "gpt-4o",
     },
     "Grok": {
         "env_key": "GROK_API_KEY",
         "base_url": "https://api.x.ai/v1/chat/completions",
+        "auth_header": "Authorization",
+        "auth_header_include_bearer": True,
+        "extra_headers": {},
         "model": "???",
     },
     "DeepSeek": {
         "env_key": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com/v1/chat/completions",
+        "auth_header": "Authorization",
+        "auth_header_include_bearer": True,
+        "extra_headers": {},
         "model": "???",
     }
 }
@@ -68,10 +80,11 @@ def validate_env_vars():
         )
 
 class AIProvider:
-    def __init__(self, name: str, api_key: str, base_url: str, system_prompt: str, model: str):
+    def __init__(self, name, api_key, base_url, headers, system_prompt, model):
         self.name = name
         self.api_key = api_key
         self.base_url = base_url
+        self.headers = headers
         self.system_prompt = system_prompt
         self.model = model
 
@@ -92,10 +105,19 @@ def build_providers():
     for name, config in API_CONFIGS.items():
         api_key = os.getenv(config["env_key"])
         if api_key:
+            headers = {
+                "Content-Type": "application/json"
+            }
+            if config["auth_header_include_bearer"]:
+                headers[config["auth_header"]] = f"Bearer {api_key}"
+            else:
+                headers[config["auth_header"]] = api_key
+            headers |= config["extra_headers"]
             providers[name] = AIProvider(
                 name,
                 api_key,
                 config["base_url"],
+                headers,
                 _create_system_prompt(f"🤖[{name}]"),
                 config["model"],
             )
