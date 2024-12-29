@@ -89,6 +89,32 @@ class AIProvider:
         self.model = model
 
 
+    async def make_request(self, messages):
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "messages": messages,
+                "model": self.model,
+                "temperature": 0.7
+            }
+
+            try:
+                logging.info(
+                    f"Making request to {self.base_url}\n"
+                    f"   Headers: {self.headers}\n"
+                    f"   JSON: {payload}\n"
+                )
+                async with session.post(self.base_url, headers=self.headers, json=payload) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        response = data['choices'][0]['message']['content']
+                        logging.info(f"Got response: {response}")
+                        return response
+                    else:
+                        return f"Error: {await response.text()}"
+            except Exception as e:
+                return f"Error making request to {self.name}: {str(e)}"
+
+
 def _create_system_prompt(ai_identifier):
     return f"""You are in a chat session with one or more humans, and potentially other AIs.
     Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
@@ -130,37 +156,6 @@ class AIChat:
         self.chat_history = []
 
 
-    async def _make_ai_request(self, provider: AIProvider, messages: List[Dict[str, str]]) -> str:
-        async with aiohttp.ClientSession() as session:
-            headers = {
-                "Authorization": f"Bearer {provider.api_key}",
-                "Content-Type": "application/json"
-            }
-
-            payload = {
-                "messages": messages,
-                "model": provider.model,
-                "temperature": 0.7
-            }
-
-            try:
-                logging.info(
-                    f"Making request to {provider.base_url}\n"
-                    f"   Headers: {headers}\n"
-                    f"   JSON: {payload}\n"
-                )
-                async with session.post(provider.base_url, headers=headers, json=payload) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        response = data['choices'][0]['message']['content']
-                        logging.info(f"Got response: {response}")
-                        return response
-                    else:
-                        return f"Error: {await response.text()}"
-            except Exception as e:
-                return f"Error making request to {provider.name}: {str(e)}"
-
-
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
         # Format the user message
         formatted_message = f"👤[{user_name}]: {message_text}"
@@ -175,7 +170,7 @@ class AIChat:
 
         have_response = False
         for provider in ai_order:
-            response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + self.chat_history)
+            response = await provider.make_request([{"role": "system", "content": provider.system_prompt}] + self.chat_history)
             if response.strip().upper() != "PASS":
                 formatted_response = f"🤖[{provider.name}]: {response}"
                 responses.append(formatted_response)
@@ -187,7 +182,7 @@ class AIChat:
         if have_response:
             random.shuffle(ai_order)  # Randomize order again for second round
             for provider in ai_order:
-                response = await self._make_ai_request(provider, [{"role": "system", "content": provider.system_prompt}] + self.chat_history)
+                response = await provider.make_request([{"role": "system", "content": provider.system_prompt}] + self.chat_history)
                 if response.strip().upper() != "PASS":
                     formatted_response = f"🤖[{provider.name}]: {response}"
                     responses.append(formatted_response)
