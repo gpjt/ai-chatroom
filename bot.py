@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from typing import Dict, List
+from typing import List
 
 import aiohttp
 
