@@ -1,17 +1,14 @@
-import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import aiohttp
 import random
-import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Required environment variables
 # Required environment variables
 REQUIRED_ENV_VARS = [
     'TELEGRAM_BOT_TOKEN',
@@ -81,7 +78,6 @@ class AIChat:
                     config["base_url"],
                     self._create_system_prompt(f"🤖[{name}]")
                 )
-        }
 
         # Store active chats and their configurations
         self.active_chats: Dict[int, List[str]] = {}  # chat_id -> list of active AI names
