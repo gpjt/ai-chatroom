@@ -92,7 +92,7 @@ class AIProvider:
     async def make_request(self, messages):
         async with aiohttp.ClientSession() as session:
             payload = {
-                "messages": messages,
+                "messages": [{"role": "system", "content": self.system_prompt}] + messages,
                 "model": self.model,
                 "temperature": 0.7
             }
@@ -170,7 +170,7 @@ class AIChat:
 
         have_response = False
         for provider in ai_order:
-            response = await provider.make_request([{"role": "system", "content": provider.system_prompt}] + self.chat_history)
+            response = await provider.make_request(self.chat_history)
             if response.strip().upper() != "PASS":
                 formatted_response = f"🤖[{provider.name}]: {response}"
                 responses.append(formatted_response)
@@ -182,7 +182,7 @@ class AIChat:
         if have_response:
             random.shuffle(ai_order)  # Randomize order again for second round
             for provider in ai_order:
-                response = await provider.make_request([{"role": "system", "content": provider.system_prompt}] + self.chat_history)
+                response = await provider.make_request(self.chat_history)
                 if response.strip().upper() != "PASS":
                     formatted_response = f"🤖[{provider.name}]: {response}"
                     responses.append(formatted_response)
