@@ -48,7 +48,7 @@ API_CONFIGS = {
         "auth_header": "Authorization",
         "auth_header_include_bearer": True,
         "extra_headers": {},
-        "model": "???",
+        "model": "grok-2-latest",
     },
     "DeepSeek": {
         "env_key": "DEEPSEEK_API_KEY",
