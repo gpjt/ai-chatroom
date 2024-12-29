@@ -75,35 +75,39 @@ class AIProvider:
         self.system_prompt = system_prompt
         self.model = model
 
+
+def _create_system_prompt(ai_identifier):
+    return f"""You are in a chat session with one or more humans, and potentially other AIs.
+    Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
+    and your own messages are identified by {ai_identifier}.  This applies only to the context that you
+    are sent, you MUST NOT prefix your own responses with {ai_identifier}.
+    After each message from a human, all participating AIs will be offered a chance to respond in a random order.
+    Once all have responded, they will be offered a chance to respond again so that they can answer any points
+    raised by the other AIs. You can choose not to respond by saying just 'PASS'.
+    You are welcome to address in your responses anything raised by either the humans or any other AIs."""
+
+
+def build_providers():
+    providers = {}
+    for name, config in API_CONFIGS.items():
+        api_key = os.getenv(config["env_key"])
+        if api_key:
+            providers[name] = AIProvider(
+                name,
+                api_key,
+                config["base_url"],
+                _create_system_prompt(f"🤖[{name}]"),
+                config["model"],
+            )
+    return providers
+
+
 class AIChat:
-    def __init__(self):
-        # Initialize providers based on available API keys
-        self.providers: Dict[str, AIProvider] = {}
-
-        for name, config in API_CONFIGS.items():
-            api_key = os.getenv(config["env_key"])
-            if api_key:
-                self.providers[name] = AIProvider(
-                    name,
-                    api_key,
-                    config["base_url"],
-                    self._create_system_prompt(f"🤖[{name}]"),
-                    config["model"],
-                )
-
-        # Store active chats and their configurations
+    def __init__(self, providers):
+        self.providers = providers
         self.active_chats: Dict[int, List[str]] = {}  # chat_id -> list of active AI names
         self.chat_history: Dict[int, List[str]] = {}  # chat_id -> history
 
-    def _create_system_prompt(self, ai_identifier: str) -> str:
-        return f"""You are in a chat session with one or more humans, and potentially other AIs.
-        Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
-        and your own messages are identified by {ai_identifier}.  This applies only to the context that you
-        are sent, you MUST NOT prefix your own responses with {ai_identifier}.
-        After each message from a human, all participating AIs will be offered a chance to respond in a random order.
-        Once all have responded, they will be offered a chance to respond again so that they can answer any points
-        raised by the other AIs. You can choose not to respond by saying just 'PASS'.
-        You are welcome to address in your responses anything raised by either the humans or any other AIs."""
 
     async def _make_ai_request(self, provider: AIProvider, messages: List[Dict[str, str]]) -> str:
         async with aiohttp.ClientSession() as session:
@@ -172,8 +176,9 @@ class AIChat:
         return responses
 
 class TelegramBot:
-    def __init__(self, token: str):
+    def __init__(self, token, providers):
         self.application = Application.builder().token(token).build()
+        self.providers = providers
         self.authorized_chats = {}
         self.secret_key = os.getenv('BOT_SECRET_KEY')
 
@@ -201,7 +206,7 @@ class TelegramBot:
             return
 
         # Authorize and initialize the chat
-        ai_chat = AIChat()
+        ai_chat = AIChat(providers=self.providers)
         self.authorized_chats[chat_id] = ai_chat
         ai_chat.active_chats[chat_id] = []
         ai_chat.chat_history[chat_id] = []
@@ -209,7 +214,7 @@ class TelegramBot:
             chat_id=chat_id,
             text="Chat authorized and initialized."
         )
-        for ai_name in ai_chat.providers:
+        for ai_name in self.providers:
             ai_chat.active_chats[chat_id].append(ai_name)
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -239,12 +244,13 @@ class TelegramBot:
                 text=response
             )
 
+
 def main():
-    # Validate environment variables before starting
     validate_env_vars()
 
-    # Initialize and run the bot
-    bot = TelegramBot(os.getenv('TELEGRAM_BOT_TOKEN'))
+    providers = build_providers()
+
+    bot = TelegramBot(token=os.getenv('TELEGRAM_BOT_TOKEN'), providers=providers)
     bot.application.run_polling()
 
 if __name__ == "__main__":
