@@ -1,4 +1,5 @@
 # ai-chatroom
 
 A Telegram bot where you can have multiple OpenAI-compatible AIs chiming in.
-Code largely written by Claude <https://claude.ai/>
+Code originally written by Claude <https://claude.ai/> but since heavily
+modified.  Bery much a WIP -- don't expect it to work well yet!
