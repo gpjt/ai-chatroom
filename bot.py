@@ -1,9 +1,19 @@
+import logging
+import os
+import random
+from typing import Dict, List
+
+import aiohttp
+
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import aiohttp
-import random
-import os
-from typing import Dict, List
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Required environment variables
 REQUIRED_ENV_VARS = [
@@ -101,10 +111,17 @@ class AIChat:
             }
 
             try:
+                logging.info(
+                    f"Making request to {provider.base_url}\n"
+                    f"   Headers: {headers}\n"
+                    f"   JSON: {payload}\n"
+                )
                 async with session.post(provider.base_url, headers=headers, json=payload) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return data['choices'][0]['message']['content']
+                        response = data['choices'][0]['message']['content']
+                        logging.info(f"Got response: {response}")
+                        return response
                     else:
                         return f"Error: {await response.text()}"
             except Exception as e:
