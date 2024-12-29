@@ -93,6 +93,7 @@ class AIChat:
 
         # Store active chats and their configurations
         self.active_chats: Dict[int, List[str]] = {}  # chat_id -> list of active AI names
+        self.chat_history: Dict[int, List[str]] = {}  # chat_id -> history
 
     def _create_system_prompt(self, ai_identifier: str) -> str:
         return f"""You are in a chat session with one or more humans, and potentially other AIs.
