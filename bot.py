@@ -105,7 +105,7 @@ class AIProvider:
                 async with session.post(self.base_url, headers=self.headers, json=payload) as response:
                     if response.status == 200:
                         data = await response.json()
-                        response = data['choices'][0]['message']['content']
+                        response = self.parse_response(data)
                         logging.info(f"Got response: {response}")
                         return response
                     else:
@@ -119,8 +119,11 @@ class OpenAIProvider(AIProvider):
         return {
             "messages": [{"role": "system", "content": self.system_prompt}] + messages,
             "model": self.model,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
+
+    def parse_response(self, data):
+        return data['choices'][0]['message']['content']
 
 
 
@@ -130,9 +133,14 @@ class AnthropicProvider(AIProvider):
             "system": self.system_prompt,
             "messages": messages,
             "model": self.model,
-            "temperature": 0.7
+            "temperature": 0.7,
+            "max_tokens": 1024,
         }
 
+    def parse_response(self, data):
+        if len(data["content"]) == 0:
+            return "PASS"
+        return data["content"][0]["text"]
 
 
 def _create_system_prompt(ai_identifier):
@@ -143,7 +151,8 @@ def _create_system_prompt(ai_identifier):
     After each message from a human, all participating AIs will be offered a chance to respond in a random order.
     Once all have responded, they will be offered a chance to respond again so that they can answer any points
     raised by the other AIs. You can choose not to respond by saying just 'PASS'.
-    You are welcome to address in your responses anything raised by either the humans or any other AIs."""
+    You are welcome to address in your responses anything raised by either the humans or any other AIs.
+    You should keep your response to less than 1024 tokens."""
 
 
 def build_providers():
