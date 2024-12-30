@@ -14,6 +14,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 BASE_DIR = Path(__file__).resolve().parent
 CREDS_FILE = BASE_DIR / "creds.json"
 PROVIDER_CONFIG_FILE = BASE_DIR / "providers.json"
+CHATS_DIR = BASE_DIR / "chats"
 
 
 logging.basicConfig(
@@ -184,12 +185,22 @@ def build_providers(provider_api_keys):
 
 class ChatHistory:
 
-    def __init__(self):
+    def __init__(self, chat_id):
+        self.chat_id = chat_id
         self.history = []
 
 
     def append(self, message):
         self.history.append(message)
+        self._save()
+
+
+    def _save(self):
+        CHATS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(CHATS_DIR / f"{self.chat_id}.jsonl", "w") as f:
+            for message in self.history:
+                f.write(json.dumps(message))
+                f.write("\n")
 
 
     def __iter__(self):
@@ -197,9 +208,9 @@ class ChatHistory:
 
 
 class AIChat:
-    def __init__(self, providers):
+    def __init__(self, chat_id, providers):
         self.providers = providers
-        self.chat_history = ChatHistory()
+        self.chat_history = ChatHistory(chat_id)
 
 
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
@@ -261,7 +272,7 @@ class TelegramBot:
             return
 
         # Authorize and initialize the chat
-        ai_chat = AIChat(providers=self.providers)
+        ai_chat = AIChat(chat_id=chat_id, providers=self.providers)
         self.authorized_chats[chat_id] = ai_chat
         await context.bot.send_message(
             chat_id=chat_id,
