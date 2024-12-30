@@ -70,13 +70,28 @@ def validate_env_vars():
             + "\n".join([f"- {config['env_key']}" for config in API_CONFIGS.values()])
         )
 
+
+
+def _create_system_prompt(ai_identifier):
+    return f"""You are in a chat session with one or more humans, and potentially other AIs.
+    Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
+    and your own messages are identified by {ai_identifier}.  This applies only to the context that you
+    are sent, you MUST NOT prefix your own responses with {ai_identifier}.
+    After each message from a human, all participating AIs will be offered a chance to respond in a random order.
+    Once all have responded, they will be offered a chance to respond again so that they can answer any points
+    raised by the other AIs. You can choose not to respond by saying just 'PASS'.
+    You are welcome to address in your responses anything raised by either the humans or any other AIs.
+    You should keep your response to less than 1024 tokens."""
+
+
+
 class AIProvider:
-    def __init__(self, name, api_key, base_url, system_prompt, model):
+    def __init__(self, name, api_key, base_url, model):
         self.name = name
         self.api_key = api_key
         self.base_url = base_url
-        self.system_prompt = system_prompt
         self.model = model
+        self.system_prompt = _create_system_prompt(f"🤖[{name}]")
 
 
     async def make_request(self, messages):
@@ -144,18 +159,6 @@ class AnthropicProvider(AIProvider):
         return data["content"][0]["text"]
 
 
-def _create_system_prompt(ai_identifier):
-    return f"""You are in a chat session with one or more humans, and potentially other AIs.
-    Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
-    and your own messages are identified by {ai_identifier}.  This applies only to the context that you
-    are sent, you MUST NOT prefix your own responses with {ai_identifier}.
-    After each message from a human, all participating AIs will be offered a chance to respond in a random order.
-    Once all have responded, they will be offered a chance to respond again so that they can answer any points
-    raised by the other AIs. You can choose not to respond by saying just 'PASS'.
-    You are welcome to address in your responses anything raised by either the humans or any other AIs.
-    You should keep your response to less than 1024 tokens."""
-
-
 def build_providers():
     providers = {}
     for name, config in API_CONFIGS.items():
@@ -172,7 +175,6 @@ def build_providers():
                 name,
                 api_key,
                 config["base_url"],
-                _create_system_prompt(f"🤖[{name}]"),
                 config["model"],
             )
     return providers
