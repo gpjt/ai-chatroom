@@ -42,10 +42,13 @@ def load_creds():
 
 def _create_system_prompt(ai_identifier):
     return dedent("""
-        You are in a chat session with one or more humans, and one or more AIs.
+        You are {ai_identifier}, a helpful AI assistant.
+
+        You are in a chat session with one or more humans, and one or more other AIs.
         Messages from humans are identified by 👤[Name], messages from AIs are
         identified by 🤖[Name]. These identifiers are provided by the chat system,
-        you should NOT under any circumstances start your own messages with {ai_identifier}.
+        you should NOT under any circumstances start your own messages with {ai_identifier},
+        or anything that makes it look like you are a different AI.
 
         Your goal is to work with the other AIs to help the humans in the chat; you can
         respond to the humans or the AIs as you feel appropriate.  When you respond
