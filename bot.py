@@ -38,7 +38,7 @@ def load_creds():
 
 
 def _create_system_prompt(ai_identifier):
-    return f"""You are in a chat session with one or more humans, and potentially other AIs.
+    return f"""You are in a chat session with one or more humans, and one or more AIs.
     Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
     and your own messages are identified by {ai_identifier}.  This applies only to the context that you
     are sent, you MUST NOT prefix your own responses with {ai_identifier}.
@@ -59,7 +59,19 @@ class AIProvider:
         self.system_prompt = _create_system_prompt(f"🤖[{name}]")
 
 
-    async def make_request(self, messages):
+    def format_messages(self, chat_history):
+        messages = []
+        for message in chat_history:
+            if message["type"] == "bot" and message["name"] == self.name:
+                messages.append({"role": "assistant", "content": message["message"]})
+            else:
+                messages.append({"role": "user", "content": message["message"]})
+        return messages
+
+
+    async def make_request(self, chat_history):
+        messages = self.format_messages(chat_history)
+
         async with aiohttp.ClientSession() as session:
             headers = self.get_headers()
             payload = self.get_payload(messages)
@@ -160,9 +172,7 @@ class AIChat:
         # Format the user message
         formatted_message = f"👤[{user_name}]: {message_text}"
 
-        self.chat_history += [
-            {"role": "user", "content": formatted_message}
-        ]
+        self.chat_history.append({"type": "user", "name": user_name, "message": formatted_message})
 
         ai_order = list(self.providers.values())
         random.shuffle(ai_order)
@@ -173,7 +183,7 @@ class AIChat:
             if response.strip().upper() != "PASS":
                 formatted_response = f"🤖[{provider.name}]: {response}"
                 yield formatted_response
-                self.chat_history.append({"role": "assistant", "content": formatted_response})
+                self.chat_history.append({"type": "bot", "name": provider.name, "message": formatted_response})
                 have_response = True
 
         # Second round: Allow AIs to respond to each other, if at least one of them
@@ -185,7 +195,7 @@ class AIChat:
                 if response.strip().upper() != "PASS":
                     formatted_response = f"🤖[{provider.name}]: {response}"
                     yield formatted_response
-                    self.chat_history.append({"role": "assistant", "content": formatted_response})
+                    self.chat_history.append({"type": "bot", "name": provider.name, "message": formatted_response})
 
 
 class TelegramBot:
