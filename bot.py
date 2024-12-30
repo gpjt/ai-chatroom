@@ -23,6 +23,7 @@ logging.basicConfig(
 )
 
 
+
 def load_creds():
     with open(CREDS_FILE) as f:
         creds = json.load(f)
@@ -58,10 +59,12 @@ def _create_system_prompt(ai_identifier):
     """)
 
 
+
 def format_message(message):
     if message["type"] == "bot":
         return f"🤖[{message['name']}]: {message['message']}"
     return f"👤[{message['name']}]: {message['message']}"
+
 
 
 class AIProvider:
@@ -107,6 +110,7 @@ class AIProvider:
                 return f"Error making request to {self.name}: {str(e)}"
 
 
+
 class OpenAIProvider(AIProvider):
     def get_headers(self):
         return {
@@ -150,6 +154,7 @@ class AnthropicProvider(AIProvider):
         return data["content"][0]["text"]
 
 
+
 def build_providers(provider_api_keys):
     with open(PROVIDER_CONFIG_FILE) as f:
         ai_provider_configs = json.load(f)
@@ -176,10 +181,25 @@ def build_providers(provider_api_keys):
     return providers
 
 
+
+class ChatHistory:
+
+    def __init__(self):
+        self.history = []
+
+
+    def append(self, message):
+        self.history.append(message)
+
+
+    def __iter__(self):
+        return iter(self.history)
+
+
 class AIChat:
     def __init__(self, providers):
         self.providers = providers
-        self.chat_history = []
+        self.chat_history = ChatHistory()
 
 
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
