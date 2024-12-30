@@ -185,9 +185,27 @@ def build_providers(provider_api_keys):
 
 class ChatHistory:
 
-    def __init__(self, chat_id):
+    @staticmethod
+    def load_chats():
+        existing_chats = []
+        if CHATS_DIR.is_dir():
+            for file_path in CHATS_DIR.glob("*.jsonl"):
+                existing_chats.append(ChatHistory.load(file_path))
+        return existing_chats
+
+    @staticmethod
+    def load(path):
+        logging.info(f"Loading chat history from {path}")
+        history = []
+        with open(path, "r") as f:
+            for line in f.readlines():
+                history.append(json.loads(line))
+        return ChatHistory(chat_id=int(path.stem), history=history)
+
+
+    def __init__(self, chat_id, history=None):
         self.chat_id = chat_id
-        self.history = []
+        self.history = history if history else []
 
 
     def append(self, message):
@@ -205,6 +223,8 @@ class ChatHistory:
 
     def __iter__(self):
         return iter(self.history)
+
+
 
 
 class AIChat:
@@ -242,10 +262,13 @@ class AIChat:
 
 
 class TelegramBot:
-    def __init__(self, token, secret_key, providers):
+    def __init__(self, token, secret_key, providers, existing_chat_histories):
         self.application = Application.builder().token(token).build()
         self.providers = providers
-        self.authorized_chats = {}
+        self.authorized_chats = {
+            chat_history.chat_id: AIChat(chat_id=chat_history.chat_id, providers=self.providers)
+            for chat_history in existing_chat_histories
+        }
         self.secret_key = secret_key
 
         # Add handlers
@@ -308,7 +331,9 @@ def main():
 
     providers = build_providers(creds["provider_api_keys"])
 
-    bot = TelegramBot(token=creds["telegram_bot_token"], secret_key=creds["bot_secret_key"], providers=providers)
+    existing_chat_histories = ChatHistory.load_chats()
+
+    bot = TelegramBot(token=creds["telegram_bot_token"], secret_key=creds["bot_secret_key"], providers=providers, existing_chat_histories=existing_chat_histories)
     bot.application.run_polling()
 
 if __name__ == "__main__":
