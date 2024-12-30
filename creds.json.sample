@@ -1,0 +1,10 @@
+{
+    "telegram_bot_token": "<your Telegram bot token from the BotFather>",
+    "bot_secret_key": "<an alphanumeric string (no spaces) that you pass to /start to authorize a session>",
+    "provider_api_keys": {
+        "Claude": "<your Claude API key (if any)>",
+        "GPT": "<your OpenAI API key (if any)>",
+        "Grok": "<your Grok API key (if any)>",
+        "DeepSeek": "<your DeepSeek API key (if any)>"
+    }
+}

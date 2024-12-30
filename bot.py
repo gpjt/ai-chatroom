@@ -12,6 +12,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 
 BASE_DIR = Path(__file__).resolve().parent
+CREDS_FILE = BASE_DIR / "creds.json"
 PROVIDER_CONFIG_FILE = BASE_DIR / "providers.json"
 
 
@@ -22,21 +23,18 @@ logging.basicConfig(
 )
 
 
-REQUIRED_ENV_VARS = [
-    'TELEGRAM_BOT_TOKEN',
-    'BOT_SECRET_KEY'
-]
-
-def validate_env_vars():
-    """Validate required environment variables and ensure at least one AI provider is available"""
-    # Check required vars
-    missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
-    if missing_vars:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing_vars)}\n"
-            "Please ensure all required variables are set in your environment."
-        )
-
+def load_creds():
+    with open(CREDS_FILE) as f:
+        creds = json.load(f)
+    required = ["telegram_bot_token", "bot_secret_key", "provider_api_keys"]
+    missing = [var for var in required if var not in creds]
+    if missing:
+        raise EnvironmentError(f"Your creds file is missing the following: {', '.join(missing)}")
+    if type(creds["provider_api_keys"]) != dict:
+        raise EnvironmentError("Please provide a mapping from providers to API keys for `provider_api_keys`")
+    if len(creds["provider_api_keys"]) == 0:
+        raise EnvironmentError("Please provide at least one API key in `provider_api_keys`")
+    return creds
 
 
 
@@ -127,13 +125,13 @@ class AnthropicProvider(AIProvider):
         return data["content"][0]["text"]
 
 
-def build_providers():
+def build_providers(provider_api_keys):
     with open(PROVIDER_CONFIG_FILE) as f:
         ai_provider_configs = json.load(f)
 
     providers = {}
     for name, config in ai_provider_configs.items():
-        api_key = os.getenv(config["env_key"])
+        api_key = provider_api_keys.get(name)
         if api_key:
             if config.get("api_type") == "openai":
                 provider_class = OpenAIProvider
@@ -148,6 +146,8 @@ def build_providers():
                 config["base_url"],
                 config["model"],
             )
+    if len(providers) == 0:
+        raise EnvironmentError("No API keys for a valid provider found")
     return providers
 
 
@@ -192,11 +192,11 @@ class AIChat:
         return responses
 
 class TelegramBot:
-    def __init__(self, token, providers):
+    def __init__(self, token, secret_key, providers):
         self.application = Application.builder().token(token).build()
         self.providers = providers
         self.authorized_chats = {}
-        self.secret_key = os.getenv('BOT_SECRET_KEY')
+        self.secret_key = secret_key
 
         # Add handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
@@ -255,11 +255,11 @@ class TelegramBot:
 
 
 def main():
-    validate_env_vars()
+    creds = load_creds()
 
-    providers = build_providers()
+    providers = build_providers(creds["provider_api_keys"])
 
-    bot = TelegramBot(token=os.getenv('TELEGRAM_BOT_TOKEN'), providers=providers)
+    bot = TelegramBot(token=creds["telegram_bot_token"], secret_key=creds["bot_secret_key"], providers=providers)
     bot.application.run_polling()
 
 if __name__ == "__main__":
