@@ -49,6 +49,11 @@ def _create_system_prompt(ai_identifier):
     You should keep your response to less than 1024 tokens."""
 
 
+def format_message(message):
+    if message["type"] == "bot":
+        return f"🤖[{message['name']}]: {message['message']}"
+    return f"👤[{message['name']}]: {message['message']}"
+
 
 class AIProvider:
     def __init__(self, name, api_key, base_url, model):
@@ -65,7 +70,7 @@ class AIProvider:
             if message["type"] == "bot" and message["name"] == self.name:
                 messages.append({"role": "assistant", "content": message["message"]})
             else:
-                messages.append({"role": "user", "content": message["message"]})
+                messages.append({"role": "user", "content": format_message(message)})
         return messages
 
 
@@ -169,10 +174,8 @@ class AIChat:
 
 
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
-        # Format the user message
-        formatted_message = f"👤[{user_name}]: {message_text}"
-
-        self.chat_history.append({"type": "user", "name": user_name, "message": formatted_message})
+        user_message = {"type": "user", "name": user_name, "message": message_text}
+        self.chat_history.append(user_message)
 
         ai_order = list(self.providers.values())
         random.shuffle(ai_order)
@@ -181,9 +184,9 @@ class AIChat:
         for provider in ai_order:
             response = await provider.make_request(self.chat_history)
             if response.strip().upper() != "PASS":
-                formatted_response = f"🤖[{provider.name}]: {response}"
-                yield formatted_response
-                self.chat_history.append({"type": "bot", "name": provider.name, "message": formatted_response})
+                bot_message = {"type": "bot", "name": provider.name, "message": response}
+                yield format_message(bot_message)
+                self.chat_history.append(bot_message)
                 have_response = True
 
         # Second round: Allow AIs to respond to each other, if at least one of them
@@ -193,9 +196,9 @@ class AIChat:
             for provider in ai_order:
                 response = await provider.make_request(self.chat_history)
                 if response.strip().upper() != "PASS":
-                    formatted_response = f"🤖[{provider.name}]: {response}"
-                    yield formatted_response
-                    self.chat_history.append({"type": "bot", "name": provider.name, "message": formatted_response})
+                    bot_message = {"type": "bot", "name": provider.name, "message": response}
+                    yield format_message(bot_message)
+                    self.chat_history.append(bot_message)
 
 
 class TelegramBot:
