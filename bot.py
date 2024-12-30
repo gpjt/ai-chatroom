@@ -1,12 +1,18 @@
+import json
 import logging
 import os
 import random
+from pathlib import Path
 from typing import List
 
 import aiohttp
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+
+BASE_DIR = Path(__file__).resolve().parent
+PROVIDER_CONFIG_FILE = BASE_DIR / "providers.json"
 
 
 logging.basicConfig(
@@ -21,33 +27,6 @@ REQUIRED_ENV_VARS = [
     'BOT_SECRET_KEY'
 ]
 
-API_CONFIGS = {
-    "Claude": {
-        "env_key": "ANTHROPIC_API_KEY",
-        "base_url": "https://api.anthropic.com/v1/messages",
-        "api_type": "anthropic",
-        "model": "claude-3-5-sonnet-latest",
-    },
-    "GPT": {
-        "env_key": "OPENAI_API_KEY",
-        "base_url": "https://api.openai.com/v1/chat/completions",
-        "api_type": "openai",
-        "model": "gpt-4o",
-    },
-    "Grok": {
-        "env_key": "GROK_API_KEY",
-        "base_url": "https://api.x.ai/v1/chat/completions",
-        "api_type": "openai",
-        "model": "grok-2-latest",
-    },
-    "DeepSeek": {
-        "env_key": "DEEPSEEK_API_KEY",
-        "base_url": "https://api.deepseek.com/v1/chat/completions",
-        "api_type": "openai",
-        "model": "deepseek-chat",
-    }
-}
-
 def validate_env_vars():
     """Validate required environment variables and ensure at least one AI provider is available"""
     # Check required vars
@@ -58,17 +37,6 @@ def validate_env_vars():
             "Please ensure all required variables are set in your environment."
         )
 
-    # Check if at least one AI provider is configured
-    available_providers = [
-        name for name, config in API_CONFIGS.items()
-        if os.getenv(config["env_key"])
-    ]
-
-    if not available_providers:
-        raise EnvironmentError(
-            "No AI providers configured. Please set at least one of these environment variables:\n"
-            + "\n".join([f"- {config['env_key']}" for config in API_CONFIGS.values()])
-        )
 
 
 
@@ -160,8 +128,11 @@ class AnthropicProvider(AIProvider):
 
 
 def build_providers():
+    with open(PROVIDER_CONFIG_FILE) as f:
+        ai_provider_configs = json.load(f)
+
     providers = {}
-    for name, config in API_CONFIGS.items():
+    for name, config in ai_provider_configs.items():
         api_key = os.getenv(config["env_key"])
         if api_key:
             if config.get("api_type") == "openai":

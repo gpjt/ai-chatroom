@@ -1,0 +1,26 @@
+{
+    "Claude": {
+        "env_key": "ANTHROPIC_API_KEY",
+        "base_url": "https://api.anthropic.com/v1/messages",
+        "api_type": "anthropic",
+        "model": "claude-3-5-sonnet-latest"
+    },
+    "GPT": {
+        "env_key": "OPENAI_API_KEY",
+        "base_url": "https://api.openai.com/v1/chat/completions",
+        "api_type": "openai",
+        "model": "gpt-4o"
+    },
+    "Grok": {
+        "env_key": "GROK_API_KEY",
+        "base_url": "https://api.x.ai/v1/chat/completions",
+        "api_type": "openai",
+        "model": "grok-2-latest"
+    },
+    "DeepSeek": {
+        "env_key": "DEEPSEEK_API_KEY",
+        "base_url": "https://api.deepseek.com/v1/chat/completions",
+        "api_type": "openai",
+        "model": "deepseek-chat"
+    }
+}
