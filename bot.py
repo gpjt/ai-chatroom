@@ -2,6 +2,7 @@ import json
 import logging
 import random
 from pathlib import Path
+from textwrap import dedent
 from typing import List
 
 import aiohttp
@@ -38,15 +39,23 @@ def load_creds():
 
 
 def _create_system_prompt(ai_identifier):
-    return f"""You are in a chat session with one or more humans, and one or more AIs.
-    Messages from humans are identified by 👤[Name], messages from AIs that are not you are identified by 🤖[Name],
-    and your own messages are identified by {ai_identifier}.  This applies only to the context that you
-    are sent, you MUST NOT prefix your own responses with {ai_identifier}.
-    After each message from a human, all participating AIs will be offered a chance to respond in a random order.
-    Once all have responded, they will be offered a chance to respond again so that they can answer any points
-    raised by the other AIs. You can choose not to respond by saying just 'PASS'.
-    You are welcome to address in your responses anything raised by either the humans or any other AIs.
-    You should keep your response to less than 1024 tokens."""
+    return dedent("""
+        You are in a chat session with one or more humans, and one or more AIs.
+        Messages from humans are identified by 👤[Name], messages from AIs are
+        identified by 🤖[Name]. These identifiers are provided by the chat system,
+        you should NOT under any circumstances start your own messages with {ai_identifier}.
+
+        Your goal is to work with the other AIs to help the humans in the chat; you can
+        respond to the humans or the AIs as you feel appropriate.  When you respond
+        to anyone, you should make it clear who you are responding to, using their
+        name (without the emoji or brackets) if appropriate.
+
+        If you are given a
+        chance to respond, but you do not think it would be helpful for you to add
+        anything, you should say "PASS" and nothing else.
+
+        You should keep your response to less than 1024 tokens.
+    """)
 
 
 def format_message(message):
