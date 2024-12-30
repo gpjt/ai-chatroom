@@ -48,7 +48,7 @@ def _create_system_prompt(ai_identifier):
         Your goal is to work with the other AIs to help the humans in the chat; you can
         respond to the humans or the AIs as you feel appropriate.  When you respond
         to anyone, you should make it clear who you are responding to, using their
-        name (without the emoji or brackets) if appropriate.
+        name (WITHOUT the emoji or square brackets) if appropriate.
 
         If you are given a
         chance to respond, but you do not think it would be helpful for you to add
