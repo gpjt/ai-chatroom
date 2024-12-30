@@ -164,7 +164,6 @@ class AIChat:
             {"role": "user", "content": formatted_message}
         ]
 
-        responses = []
         ai_order = list(self.providers.values())
         random.shuffle(ai_order)
 
@@ -173,7 +172,7 @@ class AIChat:
             response = await provider.make_request(self.chat_history)
             if response.strip().upper() != "PASS":
                 formatted_response = f"🤖[{provider.name}]: {response}"
-                responses.append(formatted_response)
+                yield formatted_response
                 self.chat_history.append({"role": "assistant", "content": formatted_response})
                 have_response = True
 
@@ -185,10 +184,9 @@ class AIChat:
                 response = await provider.make_request(self.chat_history)
                 if response.strip().upper() != "PASS":
                     formatted_response = f"🤖[{provider.name}]: {response}"
-                    responses.append(formatted_response)
+                    yield formatted_response
                     self.chat_history.append({"role": "assistant", "content": formatted_response})
 
-        return responses
 
 class TelegramBot:
     def __init__(self, token, secret_key, providers):
@@ -244,9 +242,8 @@ class TelegramBot:
         user_name = update.effective_user.first_name
         message_text = update.message.text
 
-        responses = await self.authorized_chats[chat_id].process_message(chat_id, user_name, message_text)
-
-        for response in responses:
+        chat = self.authorized_chats[chat_id]
+        async for response in chat.process_message(chat_id, user_name, message_text):
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=response
