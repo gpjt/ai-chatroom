@@ -15,48 +15,35 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# Required environment variables
+
 REQUIRED_ENV_VARS = [
     'TELEGRAM_BOT_TOKEN',
     'BOT_SECRET_KEY'
 ]
 
-# Optional API configurations
 API_CONFIGS = {
     "Claude": {
         "env_key": "ANTHROPIC_API_KEY",
         "base_url": "https://api.anthropic.com/v1/messages",
         "api_type": "anthropic",
-        "auth_header": "x-api-key",
-        "auth_header_include_bearer": False,
-        "extra_headers": {"anthropic-version": "2023-06-01"},
         "model": "claude-3-5-sonnet-latest",
     },
     "GPT": {
         "env_key": "OPENAI_API_KEY",
         "base_url": "https://api.openai.com/v1/chat/completions",
         "api_type": "openai",
-        "auth_header": "Authorization",
-        "auth_header_include_bearer": True,
-        "extra_headers": {},
         "model": "gpt-4o",
     },
     "Grok": {
         "env_key": "GROK_API_KEY",
         "base_url": "https://api.x.ai/v1/chat/completions",
         "api_type": "openai",
-        "auth_header": "Authorization",
-        "auth_header_include_bearer": True,
-        "extra_headers": {},
         "model": "grok-2-latest",
     },
     "DeepSeek": {
         "env_key": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com/v1/chat/completions",
         "api_type": "openai",
-        "auth_header": "Authorization",
-        "auth_header_include_bearer": True,
-        "extra_headers": {},
         "model": "deepseek-chat",
     }
 }
@@ -84,25 +71,25 @@ def validate_env_vars():
         )
 
 class AIProvider:
-    def __init__(self, name, api_key, base_url, headers, system_prompt, model):
+    def __init__(self, name, api_key, base_url, system_prompt, model):
         self.name = name
         self.api_key = api_key
         self.base_url = base_url
-        self.headers = headers
         self.system_prompt = system_prompt
         self.model = model
 
 
     async def make_request(self, messages):
         async with aiohttp.ClientSession() as session:
+            headers = self.get_headers()
             payload = self.get_payload(messages)
             try:
                 logging.info(
                     f"Making request to {self.base_url}\n"
-                    f"   Headers: {self.headers}\n"
+                    f"   Headers: {headers}\n"
                     f"   JSON: {payload}\n"
                 )
-                async with session.post(self.base_url, headers=self.headers, json=payload) as response:
+                async with session.post(self.base_url, headers=headers, json=payload) as response:
                     if response.status == 200:
                         data = await response.json()
                         response = self.parse_response(data)
@@ -115,6 +102,13 @@ class AIProvider:
 
 
 class OpenAIProvider(AIProvider):
+    def get_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+
     def get_payload(self, messages):
         return {
             "messages": [{"role": "system", "content": self.system_prompt}] + messages,
@@ -128,6 +122,13 @@ class OpenAIProvider(AIProvider):
 
 
 class AnthropicProvider(AIProvider):
+    def get_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+        }
+
     def get_payload(self, messages):
         return {
             "system": self.system_prompt,
@@ -160,16 +161,6 @@ def build_providers():
     for name, config in API_CONFIGS.items():
         api_key = os.getenv(config["env_key"])
         if api_key:
-            headers = {
-                "Content-Type": "application/json"
-            }
-            if config["auth_header_include_bearer"]:
-                headers[config["auth_header"]] = f"Bearer {api_key}"
-            else:
-                headers[config["auth_header"]] = api_key
-            headers |= config["extra_headers"]
-
-
             if config.get("api_type") == "openai":
                 provider_class = OpenAIProvider
             elif config.get("api_type") == "anthropic":
@@ -181,7 +172,6 @@ def build_providers():
                 name,
                 api_key,
                 config["base_url"],
-                headers,
                 _create_system_prompt(f"🤖[{name}]"),
                 config["model"],
             )
