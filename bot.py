@@ -206,6 +206,7 @@ class ChatHistory:
         with open(path, "r") as f:
             for line in f.readlines():
                 history.append(json.loads(line))
+        logging.info(f"...there were {len(history)} messages")
         return ChatHistory(chat_id=int(path.stem), history=history)
 
 
@@ -234,9 +235,9 @@ class ChatHistory:
 
 
 class AIChat:
-    def __init__(self, chat_id, providers):
+    def __init__(self, chat_id, providers, history=None):
         self.providers = providers
-        self.chat_history = ChatHistory(chat_id)
+        self.chat_history = history if history else ChatHistory(chat_id)
 
 
     async def process_message(self, chat_id: int, user_name: str, message_text: str) -> List[str]:
@@ -272,7 +273,7 @@ class TelegramBot:
         self.application = Application.builder().token(token).build()
         self.providers = providers
         self.authorized_chats = {
-            chat_history.chat_id: AIChat(chat_id=chat_history.chat_id, providers=self.providers)
+            chat_history.chat_id: AIChat(chat_id=chat_history.chat_id, providers=self.providers, history=chat_history)
             for chat_history in existing_chat_histories
         }
         self.secret_key = secret_key
