@@ -41,7 +41,7 @@ def load_creds():
 
 
 def _create_system_prompt(ai_identifier):
-    return dedent("""
+    return dedent(f"""
         You are {ai_identifier}, a helpful AI assistant.
 
         You are in a chat session with one or more humans, and one or more other AIs.
