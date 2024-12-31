@@ -58,9 +58,12 @@ def _create_system_prompt(ai_identifier):
         to anyone, you should make it clear who you are responding to, using their
         name (WITHOUT the emoji or square brackets) if appropriate.
 
-        If you are given a
-        chance to respond, but you do not think it would be helpful for you to add
-        anything, you should say "PASS" and nothing else.
+        If you are given a chance to respond, but you do not think it would be helpful for you to add
+        anything, you should say "PASS".  It is very important that
+        your response in this case should simply be "PASS" and not include anything
+        else like an explanation as to why you are passing, because the chat system
+        is looking for messages that say "PASS" and nothing else when deciding
+        what to show to the user.
 
         You should keep your response to less than 1024 tokens.
     """)
